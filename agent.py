@@ -90,7 +90,6 @@ def format_steps(steps_list):
     formatted_output = "# STEPS ALREADY PERFORMED BY THE SUBAGENTS\n\n"
     
     for i, step in enumerate(steps_list, 1):
-        print(step, "step in format_steps")
         context_on_step = step[0]
         result_of_step = step[1]['content']
         formatted_output += f"## Step {i}\n\n"
@@ -200,17 +199,16 @@ def replanner(state: State, config: Config) -> dict:
     previous_steps = state["past_steps"]
     formatted_action_plan = format_action_plan(previous_action_plan)
     formatted_steps = format_steps(previous_steps)
-    print(formatted_steps, "formatted steps in replanner")
-    print(formatted_action_plan, "formatted action plan in replanner")
-    replanner_prompt = f"""
-    You are a supervisor/planner for a multi-agent team that handles queries from customers. The multi-agent team you are supervising is responsible for handling questions related to developer productivity. Your team is composed of three subagents that you can use to help answer the customer's request:
+    replanner_prompt = f"""You are a supervisor for a multi-agent team that handles queries from customers. The multi-agent team you are supervising is responsible for handling questions related to developer productivity. Your team is composed of three subagents that you can use to help answer the customer's request:
 
 1. code_research_subagent: this subagent searches the internet for information related to programming languages, libraries, and frameworks. this subagent should be used when the customer wants to learn more about the functionality of a specific programming language, library, or framework, or is just generally
 curious about some specific topic.
 2. code_writing_subagent: this subagent writes code based on the user's request.
 3. code_testing_subagent: this subagent tests the user's provided code, writes tests, and suggests improvements.
 
-Your role is to create an action plan that the subagents can follow and execute to thoroughly answer the customer's request. Your action plan should specify the exact steps that should be followed by the subagent(s) in order to successfully answer the customer's request, and which subagent should perform each step. Return the action plan as a list of objects, where each object contains the following fields:
+Before you, another supervisor/planner has already created an action plan for the subagents to follow. I've attached the previous action plan, the customer's original request, and the steps that have already been executed by the subagents below. You should take this information and either update the plan, or return Response if you believe the customer's request has been answered thoroughly and you no longer need to use the subagents to solve the problem.
+
+If you decide to update the action plan, your action plan should specify the exact steps that should be followed by the subagent(s) in order to successfully answer the customer's request, and which subagent should perform each step. Return the action plan as a list of objects, where each object contains the following fields:
 - step: a detailed step that should be followed by the subagent(s) in order to successfully answer a portion of the customer's request.
 - subagent_to_perform_step: the subagent that should perform the step.
 
@@ -218,9 +216,9 @@ Return the action plan in chronological order, starting with the first step to b
 
 If you do not need a subagent to answer the customer's request, do not include it in the action plan/list of steps. Your goal is to be as efficient as possible, while ensuring that the customer's request is answered thoroughly and to the best of your ability.
 
-Before you, another supervisor/planner has already created an action plan/list of steps for the subagents to follow. You should use this action plan as a starting point. Given the following information, update the existing action plan/list of steps to thoroughly answer the customer's request.
+Use the information below to either update the action plan, or return Response if you believe the customer's request has been answered thoroughly and you no longer need to use the subagents to solve the problem.
 
-The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+*IMPORTANT INFORMATION BELOW*
 
 Your original objective/request from the customer was this:
 {original_objective}
@@ -231,10 +229,9 @@ The original action plan constructed by the previous supervisor/planner was this
 The subagents have already executed the following steps:
 {formatted_steps}
 
-Update the plan accordingly. If no more steps are needed and you are ready to respond to the customer, use Response. If you still need to use the subagents to solve the problem, construct and return a list of steps to be performed by the subagents using Plan.
-
-Take a deep breath and think carefully before responding. Go forth and make the customer delighted!
+If no more steps are needed and you are ready to respond to the customer, use Response. If you still need to use the subagents to solve the problem, construct and return a list of steps to be performed by the subagents using Plan.
 """
+    print(replanner_prompt, "replanner prompt")
     structured_model = model.with_structured_output(ReplannerResponse)
     result = structured_model.invoke([SystemMessage(content=replanner_prompt)])
     if isinstance(result.action, Response):
