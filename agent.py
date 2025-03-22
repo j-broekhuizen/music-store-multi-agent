@@ -10,7 +10,6 @@ from langgraph.graph import END, StateGraph, START
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Literal, List, Tuple, Union
-from pprint import pprint
 
 load_dotenv()
 
@@ -143,7 +142,6 @@ def supervisor(state: State, config: Config) -> dict:
         SystemMessage(content=supervisor_prompt)
     ] + filtered_messages)
     return {
-        "messages": state["messages"], 
         "action_plan": result.steps,
         "original_objective": first_message.content,
     }
@@ -180,8 +178,6 @@ def agent_executor(state: State, config: Config) -> dict:
         response = code_test_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
         final_response = response["messages"][-1].content
     return {
-        "messages": state["messages"],
-        "action_plan": plan,
         "past_steps": [
             (first_task_subagent_response, final_response)
         ]
@@ -231,13 +227,13 @@ The subagents have already executed the following steps:
 
 If no more steps are needed and you are ready to respond to the customer, use Response. If you still need to use the subagents to solve the problem, construct and return a list of steps to be performed by the subagents using Plan.
 """
-    print(replanner_prompt, "replanner prompt")
     structured_model = model.with_structured_output(ReplannerResponse)
     result = structured_model.invoke([SystemMessage(content=replanner_prompt)])
+    print(result, "result from replanner")
     if isinstance(result.action, Response):
         return {"response": result.action.response}
     else:
-        return {"plan": result.action.steps}
+        return {"action_plan": result.action.steps}
 
 def should_end(state: State):
     print("\n" + "="*50)
@@ -274,5 +270,3 @@ config = {
 
 result = graph.invoke({ "messages": [HumanMessage(content="educate me on the use of useMemo. then write me code for a python script that adds two numbers together. then tell me what useRouter is, and what the benefit of NextJS is.")] }, config)
 print(result, "result from graph call")
-
-# planner -> agent_executor -> replanner -> agent_executor -> replanner -> END
