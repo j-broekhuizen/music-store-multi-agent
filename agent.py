@@ -2,6 +2,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.types import interrupt, Command
 import operator
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.store.memory import MemoryStore
 from langgraph.pregel.remote import RemoteGraph
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph.message import AnyMessage, add_messages
@@ -15,6 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 
+in_memory_store = MemoryStore()
 checkpointer = MemorySaver()
 
 customer_information_deployment_url = "https://react-customer-0485b42e7d885c0fbdad3852a8c0286f.us.langgraph.app"
@@ -64,6 +66,26 @@ class ReplannerResponse(BaseModel):
     action: Union[Response, Plan] = Field(
         description="The action to perform. If you no longer need to use the subagents to solve the customer's request, use Response. "
         "If you still need to use the subagents to solve the problem, construct and return a list of steps to be performed by the subagents, use Plan."
+    )
+
+class UserProfile(BaseModel):
+    customer_name: str = Field(
+        description="The name of the customer"
+    )
+    customer_id: str = Field(
+        description="The customer ID of the customer"
+    )
+    email: str = Field(
+        description="The email of the customer"
+    )
+    address: str = Field(
+        description="The address of the customer"
+    )
+    phone_number: str = Field(
+        description="The phone number of the customer"
+    )
+    music_preferences: List[str] = Field(
+        description="The music preferences of the customer"
     )
 
 supervisor_prompt = """You are an expert customer support assistant for a digital music store. You are dedicated to providing exceptional service and ensuring customer queries are answered thoroughly. You have a team of subagents that you can use to help answer queries from customers. Your primary role is to serve as a supervisor/planner for this multi-agent team that helps answer queries from customers. 
@@ -321,12 +343,11 @@ builder.add_conditional_edges(
 )
 
 memory_saver = MemorySaver()
-
-graph = builder.compile(checkpointer=memory_saver)
+graph = builder.compile(checkpointer=memory_saver, store=in_memory_store)
 
 initial_input = { "messages": [HumanMessage(content="my customer ID is 1. what is my name? also, whats my most recent purchase? and what albums does the catalog have by U2?")] }
 
-thread = {"configurable": {"thread_id": "1"}}
+thread = {"configurable": {"thread_id": "1", "user_id": "1"}}
 interrupt_info = ""
 # Run the graph until the first interruption
 for event in graph.stream(initial_input, thread, stream_mode="updates"):
