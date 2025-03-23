@@ -431,29 +431,29 @@ builder.add_conditional_edges(
 memory_saver = MemorySaver()
 graph = builder.compile(checkpointer=memory_saver, store=in_memory_store)
 
-initial_input = { "messages": [HumanMessage(content="my customer ID is 1. what is my name? also, whats my most recent purchase? and what albums does the catalog have by U2?")] }
+# initial_input = { "messages": [HumanMessage(content="my customer ID is 1. what is my name? also, whats my most recent purchase? and what albums does the catalog have by U2?")] }
 
-thread = {"configurable": {"thread_id": "1", "user_id": "1"}}
-interrupt_info = ""
-# Run the graph until the first interruption
-for event in graph.stream(initial_input, thread, stream_mode="updates"):
-    print(event)
-    print("\n")
-    if '__interrupt__' in event:
-        interrupt_obj = event['__interrupt__'][0]
-        interrupt_value = interrupt_obj.value
-        plan_to_edit = interrupt_value["agent's plan that the user can edit"]
+# thread = {"configurable": {"thread_id": "1", "user_id": "1"}}
+# interrupt_info = ""
+# # Run the graph until the first interruption
+# for event in graph.stream(initial_input, thread, stream_mode="updates"):
+#     print(event)
+#     print("\n")
+#     if '__interrupt__' in event:
+#         interrupt_obj = event['__interrupt__'][0]
+#         interrupt_value = interrupt_obj.value
+#         plan_to_edit = interrupt_value["agent's plan that the user can edit"]
         
-        formatted_plan = "\n".join([
-            f"Step {i+1}: {step.description} (using {step.subagent})"
-            for i, step in enumerate(plan_to_edit)
-        ])
+#         formatted_plan = "\n".join([
+#             f"Step {i+1}: {step.description} (using {step.subagent})"
+#             for i, step in enumerate(plan_to_edit)
+#         ])
         
-        print("\nCurrent plan:")
-        print(formatted_plan)
-        print("\nIs there anything you would like to change about the plan? If so, please enter your proposed changes. If not, just press enter.")
-        user_response = input() 
-        if user_response != "":
-            interrupt_info = user_response
-new_result = graph.invoke(Command(resume=interrupt_info), config=thread)
-print(new_result['response'], "new result")
+#         print("\nCurrent plan:")
+#         print(formatted_plan)
+#         print("\nIs there anything you would like to change about the plan? If so, please enter your proposed changes. If not, just press enter.")
+#         user_response = input() 
+#         if user_response != "":
+#             interrupt_info = user_response
+# new_result = graph.invoke(Command(resume=interrupt_info), config=thread)
+# print(new_result['response'], "new result")
