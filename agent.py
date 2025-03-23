@@ -2,9 +2,10 @@ from langchain_openai import ChatOpenAI
 from langgraph.types import interrupt, Command
 import operator
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.store.memory import MemoryStore
+from langgraph.store.memory import InMemoryStore
+from langgraph.store.base import BaseStore
 from langgraph.pregel.remote import RemoteGraph
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langgraph.graph.message import AnyMessage, add_messages
 from typing import Annotated
 from typing_extensions import TypedDict
@@ -16,7 +17,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 
-in_memory_store = MemoryStore()
+in_memory_store = InMemoryStore()
 checkpointer = MemorySaver()
 
 customer_information_deployment_url = "https://react-customer-0485b42e7d885c0fbdad3852a8c0286f.us.langgraph.app"
@@ -101,6 +102,9 @@ Your role is to create an action plan that the subagents can follow and execute 
 
 Return the action plan in chronological order, starting with the first step to be performed, and ending with the last step to be performed. You should try your best not to have multiple steps performed by the same subagent. This is inefficient. If you need a subagent to perform a task, try and group it all into one step.
 
+You have existing information/long term memory about the customer that you can use to help you create the action plan. The existing information about the customer is as follows:
+{existing_customer_information}
+
 If you do not need a subagent to answer the customer's request, do not include it in the action plan/list of steps. Your goal is to be as efficient as possible, while ensuring that the customer's request is answered thoroughly. Take a deep breath and think carefully before responding. Go forth and make the customer delighted!
 """
 
@@ -157,32 +161,60 @@ def format_action_plan(steps_list):
             summary += "---\n\n"
     return summary
 
-def supervisor(state: State) -> dict:
+def format_user_memory(user_data):
+    profile = user_data['memory']
+    result = ""
+    if hasattr(profile, 'customer_name') and profile.customer_name:
+        result += f"Customer: {profile.customer_name}\n"
+    
+    if hasattr(profile, 'customer_id') and profile.customer_id:
+        result += f"ID: {profile.customer_id}\n"
+    
+    if hasattr(profile, 'email') and profile.email:
+        result += f"Email: {profile.email}\n"
+    
+    if hasattr(profile, 'address') and profile.address:
+        result += f"Address: {profile.address}\n"
+    
+    if hasattr(profile, 'phone_number') and profile.phone_number:
+        result += f"Phone: {profile.phone_number}\n"
+    
+    if hasattr(profile, 'music_preferences') and profile.music_preferences:
+        result += f"Music Preferences: {', '.join(profile.music_preferences)}\n"
+    return result.strip()
+
+def supervisor(state: State, config: Config, store: BaseStore) -> dict:
     print("\n" + "="*50)
     print("🎯 SUPERVISOR FUNCTION CALLED")
     print("="*50)
-    
+    user_id = config["configurable"]["user_id"]
+    namespace = ("memory_profile", user_id)
+    key = "user_memory"
+    existing_memory = store.get(namespace, key)
+    if existing_memory and existing_memory.value:
+        formatted_memory = format_user_memory(existing_memory.value)
+    else:
+        formatted_memory = ""
     first_message = state["messages"][-1]
     structured_model = model.with_structured_output(Plan)
     # Filter out tool messages from conversation history
     filtered_messages = [msg for msg in state["messages"][-3:] 
                          if not (hasattr(msg, 'type') and msg.type in ["tool", "tool_call"])]
     result = structured_model.invoke([
-        SystemMessage(content=supervisor_prompt)
+        SystemMessage(content=supervisor_prompt.format(existing_customer_information=formatted_memory))
     ] + filtered_messages)
     return {
         "action_plan": result.steps,
         "original_objective": first_message.content,
     }
 
-def human_input(state: State) -> dict:
+def human_input(state: State, config: Config, store: BaseStore) -> dict:
     print("\n" + "="*50)
     print("👤 HUMAN INPUT FUNCTION CALLED")
     print("="*50)
     user_input = interrupt(
         { "agent's plan that the user can edit": state["action_plan"] }
     )
-    print(user_input, "got value back from interrupt")
     structured_model = model.with_structured_output(PlanWithUserInput)
     original_objective = state["original_objective"]
     formatted_action_plan = format_action_plan(state["action_plan"])
@@ -233,13 +265,11 @@ The customer's feedback/ideas for improvement are as follows:
     else:
         return
 
-def agent_executor(state: State, config: Config) -> dict:
+def agent_executor(state: State, config: Config, store: BaseStore) -> dict:
     print("\n" + "="*50)
     print("🤖 AGENT EXECUTOR FUNCTION CALLED")
     print("="*50)
     plan = state["action_plan"]
-    print(state["original_objective"], "original objective from state in agent executor")
-    print(plan, "plan from state in agent executor")
     total_plan = "\n".join([
         f"{i+1}. {step.subagent} will: {step.description}" 
         for i, step in enumerate(plan)
@@ -267,7 +297,7 @@ def agent_executor(state: State, config: Config) -> dict:
         ]
     }
 
-def replanner(state: State, config: Config) -> dict:
+def replanner(state: State, config: Config, store: BaseStore) -> dict:
     print("\n" + "="*50)
     print("🔄 REPLANNER FUNCTION CALLED")
     print("="*50)
@@ -314,15 +344,75 @@ If no more steps are needed and you are ready to respond to the customer, use Re
     structured_model = model.with_structured_output(ReplannerResponse)
     result = structured_model.invoke([SystemMessage(content=replanner_prompt)])
     if isinstance(result.action, Response):
-        return {"response": result.action.response}
+        return {"response": result.action.response, "messages": [AIMessage(content=result.action.response)]}
     else:
         return {"action_plan": result.action.steps}
 
-def should_end(state: State):
+create_memory_prompt = """You are an expert analyst that is observing a conversation that has taken place between a customer and a customer support assistant. The customer support assistant works for a digital music store, and has utilized a multi-agent team to answer the customer's request. 
+You are tasked with analyzing the conversation that has taken place between the customer and the customer support assistant, and updating the memory profile associated with the customer. The memory profile may be empty. If it's empty, you should create a new memory profile for the customer.
+
+You specifically care about saving any personal information that the customer has shared about themselves, such as their customer ID, name, email, phone number, address, and music preferences to their memory profile.
+
+To help you with this task, I have attached the conversation that has taken place between the customer and the customer support assistant below, as well as the existing memory profile associated with the customer that you should either update or create. 
+
+The customer's memory profile should have the following fields:
+- customer_id: the customer ID of the customer
+- customer_name: the name of the customer
+- email: the email of the customer
+- phone_number: the phone number of the customer
+- address: the address of the customer
+- music_preferences: the music preferences of the customer
+
+These are the fields you should keep track of and update in the memory profile. If there has been no new information shared by the customer, you should not update the memory profile. It is completely okay if you do not have new information to update the memory profile with. In that case, just leave the values as they are.
+
+*IMPORTANT INFORMATION BELOW*
+
+The conversation between the customer and the customer support assistant that you should analyze is as follows:
+{conversation}
+
+The existing memory profile associated with the customer that you should either update or create based on the conversation is as follows:
+{memory_profile}
+
+Ensure your response is an object that has the following fields:
+- customer_id: the customer ID of the customer
+- customer_name: the name of the customer
+- email: the email of the customer
+- phone_number: the phone number of the customer
+- address: the address of the customer
+- music_preferences: the music preferences of the customer
+
+For each key in the object, if there is no new information, do not update the value, just keep the value that is already there. If there is new information, update the value. 
+
+Take a deep breath and think carefully before responding.
+"""
+
+def should_end(state: State, config: Config, store: BaseStore):
     print("\n" + "="*50)
     print("🎬 SHOULD_END FUNCTION CALLED")
     print("="*50)
+    past_messages = state["messages"]
     if "response" in state and state["response"]:
+        user_id = config["configurable"]["user_id"]
+        namespace = ("memory_profile", user_id)
+        existing_memory = store.get(namespace, "user_memory")
+        if existing_memory and existing_memory.value:
+            existing_memory_dict = existing_memory.value
+            formatted_memory = (
+                f"Name: {existing_memory_dict.get('customer_name', 'Unknown')}\n"
+                f"Email: {existing_memory_dict.get('email', 'Unknown')}\n"
+                f"Phone Number: {existing_memory_dict.get('phone_number', 'Unknown')}\n"
+                f"Address: {existing_memory_dict.get('address', 'Unknown')}\n"
+                f"Music Preferences: {', '.join(existing_memory_dict.get('music_preferences', []))}"
+            )
+        else:
+            formatted_memory = ""
+        formatted_system_message = SystemMessage(content=create_memory_prompt.format(conversation=past_messages, memory_profile=formatted_memory))
+        structured_model = model.with_structured_output(UserProfile)
+        updated_memory = structured_model.invoke([formatted_system_message])
+        key = "user_memory"
+        store.put(namespace, key, { "memory": updated_memory })
+        memory = store.get(namespace, key)
+        print(memory.value['memory'], "memory from should_end")
         return END
     else:
         return "agent_executor"
