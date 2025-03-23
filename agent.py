@@ -218,8 +218,7 @@ def human_input(state: State, config: Config, store: BaseStore) -> dict:
     structured_model = model.with_structured_output(PlanWithUserInput)
     original_objective = state["original_objective"]
     formatted_action_plan = format_action_plan(state["action_plan"])
-    if user_input != "":
-        print(user_input, "user input detected, plan to edit") 
+    if user_input != "": 
         replan_with_user_input_prompt = f"""You are an expert customer support assistant for a digital music store. You are dedicated to providing exceptional service and ensuring customer queries are answered thoroughly. You have a team of subagents that you can use to help answer queries from customers. Your primary role is to serve as a supervisor/planner for this multi-agent team that helps answer these queries from customers. 
 The multi-agent team you are supervising is responsible for handling questions related to the digital music store's music catalog (albums, tracks, songs, etc.), information about a customer's account (name, email, phone number, address, etc.), and information about a customer's past purchases or invoices. Your team is composed of three subagents that you can use to help answer the customer's request:
 
@@ -257,7 +256,6 @@ The customer's feedback/ideas for improvement are as follows:
 {user_input}
 """
         result = structured_model.invoke([SystemMessage(content=replan_with_user_input_prompt)])
-        print(result.updated_objective, "updated objective from human input")
         return {
             "action_plan": result.steps,
             "original_objective": result.updated_objective,
@@ -411,8 +409,6 @@ def should_end(state: State, config: Config, store: BaseStore):
         updated_memory = structured_model.invoke([formatted_system_message])
         key = "user_memory"
         store.put(namespace, key, { "memory": updated_memory })
-        memory = store.get(namespace, key)
-        print(memory.value['memory'], "memory from should_end")
         return END
     else:
         return "agent_executor"
