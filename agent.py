@@ -19,7 +19,6 @@ class State(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     response: str
 
-
 supervisor_reusable_context = """You are an expert customer support assistant for a digital music store. 
 You are dedicated to providing exceptional service and ensuring customer queries are answered thoroughly. 
 You have a team of subagents that you can use to help answer queries from customers. 
@@ -92,7 +91,6 @@ def format_user_memory(user_data):
         result += f"Music Preferences: {', '.join(profile.music_preferences)}"
     return result.strip()
 
-
 # helper 
 def format_action_plan(steps_list):
     """
@@ -120,8 +118,6 @@ def format_action_plan(steps_list):
         if i < len(steps_list):
             summary += "---\n\n"
     return summary
-
-
 
 # Node 
 def supervisor(state: State, config: RunnableConfig, store: BaseStore) -> dict:
@@ -168,7 +164,6 @@ class PlanWithUserInput(BaseModel):
     updated_objective: str = Field(
         description="The updated objective/request from the customer, after taking into account the user's input/ideas for improvement"
     )
-
 
 from langgraph.types import interrupt, Command
 
@@ -218,8 +213,6 @@ The customer's feedback/ideas for improvement are as follows:
 {user_input}
 """
 
-
-
 # Node 
 def human_input(state: State, config: RunnableConfig, store: BaseStore) -> dict:
     print("\n" + "="*50 + "👤 HUMAN INPUT FUNCTION CALLED" + "="*50)
@@ -248,7 +241,7 @@ def human_input(state: State, config: RunnableConfig, store: BaseStore) -> dict:
         return{
             "messages": [SystemMessage(content=update_msg)]
         }
-    
+
 from langgraph.pregel.remote import RemoteGraph
 
 customer_information_deployment_url = "https://remote-customer-assistant-cbd474a176cb59fe87deddf6f14ce85c.us.langgraph.app"
@@ -466,7 +459,6 @@ def should_end(state: State, config: RunnableConfig, store: BaseStore):
     else:
         return "agent_executor"
     
-
 from langgraph.graph import END, StateGraph, START
 from IPython.display import Image, display
 
