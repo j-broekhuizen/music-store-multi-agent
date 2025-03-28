@@ -17,4 +17,3 @@ The system consists of three specialized subagents:
 - **Supervisor/Planner Architecture**: Uses a main agent to coordinate subagents
 - **Memory Management**: Maintains customer context across conversations
 - **Human-in-the-Loop**: Supports user intervention and plan modification
-- **Efficient Task Distribution**: Optimizes task allocation across subagents
