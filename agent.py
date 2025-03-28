@@ -5,7 +5,7 @@ load_dotenv(dotenv_path=".env", override=True)
 
 # Alternatively, you can use AzureChatOpenAI()
 # model = AzureChatOpenAI()
-model = ChatOpenAI(model="gpt-4o")
+model = ChatOpenAI(model="o3-mini")
 
 from typing_extensions import TypedDict
 from typing import Annotated, List, Tuple, Literal, Union
@@ -460,7 +460,6 @@ def should_end(state: State, config: RunnableConfig, store: BaseStore):
         return "agent_executor"
     
 from langgraph.graph import END, StateGraph, START
-from IPython.display import Image, display
 
 builder = StateGraph(State)
 builder.add_node("supervisor", supervisor)
