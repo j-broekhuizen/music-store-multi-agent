@@ -20,9 +20,9 @@ load_dotenv()
 in_memory_store = InMemoryStore()
 checkpointer = MemorySaver()
 
-customer_information_deployment_url = "https://react-customer-0485b42e7d885c0fbdad3852a8c0286f.us.langgraph.app"
-music_catalog_information_deployment_url = "https://react-music-agent-e21b47f80669524ba69076ff9d720af7.us.langgraph.app"
-invoice_information_deployment_url = "https://react-invoice-agent-3913487acf2c5d63ba166fcc35d01641.us.langgraph.app"
+customer_information_deployment_url = "https://remote-customer-assistant-cbd474a176cb59fe87deddf6f14ce85c.us.langgraph.app"
+music_catalog_information_deployment_url = "https://remote-music-assistant-56295a1f54e5561f812da52437d18097.us.langgraph.app"
+invoice_information_deployment_url = "https://remote-invoice-assistant-986c987c38e9536ea5aa870c6082254e.us.langgraph.app"
 
 customer_information_remote_graph = RemoteGraph("agent", url=customer_information_deployment_url)
 music_catalog_information_remote_graph = RemoteGraph("agent", url=music_catalog_information_deployment_url)
@@ -443,3 +443,30 @@ builder.add_conditional_edges(
 
 memory_saver = MemorySaver()
 graph = builder.compile(checkpointer=memory_saver, store=in_memory_store)
+
+# initial_input = { "messages": [HumanMessage(content="my customer ID is 1. what is my name? also, whats my most recent purchase? and what albums does the catalog have by U2?")] }
+
+# thread = {"configurable": {"thread_id": "1", "user_id": "1"}}
+# interrupt_info = ""
+# # Run the graph until the first interruption
+# for event in graph.stream(initial_input, thread, stream_mode="updates"):
+#     print(event)
+#     print("\n")
+#     if '__interrupt__' in event:
+#         interrupt_obj = event['__interrupt__'][0]
+#         interrupt_value = interrupt_obj.value
+#         plan_to_edit = interrupt_value["agent's plan that the user can edit"]
+        
+#         formatted_plan = "\n".join([
+#             f"Step {i+1}: {step.description} (using {step.subagent})"
+#             for i, step in enumerate(plan_to_edit)
+#         ])
+        
+#         print("\nCurrent plan:")
+#         print(formatted_plan)
+#         print("\nIs there anything you would like to change about the plan? If so, please enter your proposed changes. If not, just press enter.")
+#         user_response = input() 
+#         if user_response != "":
+#             interrupt_info = user_response
+# new_result = graph.invoke(Command(resume=interrupt_info), config=thread)
+# print(new_result['response'], "new result")
