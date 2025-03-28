@@ -213,11 +213,9 @@ def supervisor(state: State, config: Config, store: BaseStore) -> dict:
     first_message = state["messages"][-1]
     structured_model = model.with_structured_output(Plan)
     # Filter out tool messages from conversation history
-    filtered_messages = [msg for msg in state["messages"][-3:] 
-                         if not (hasattr(msg, 'type') and msg.type in ["tool", "tool_call"])]
     result = structured_model.invoke([
         SystemMessage(content=supervisor_prompt.format(existing_customer_information=formatted_memory))
-    ] + filtered_messages)
+    ])
     return {
         "action_plan": result.steps,
         "original_objective": first_message.content,
@@ -344,7 +342,7 @@ Use the information below to either update the action plan, or return Response i
 *IMPORTANT INFORMATION BELOW*
 
 Your original objective/request from the customer was this:
-{original_objective}
+{original_objective}  s
 
 The original action plan constructed by the previous supervisor/planner was this:
 {formatted_action_plan}
@@ -445,30 +443,3 @@ builder.add_conditional_edges(
 
 memory_saver = MemorySaver()
 graph = builder.compile(checkpointer=memory_saver, store=in_memory_store)
-
-# initial_input = { "messages": [HumanMessage(content="my customer ID is 1. what is my name? also, whats my most recent purchase? and what albums does the catalog have by U2?")] }
-
-# thread = {"configurable": {"thread_id": "1", "user_id": "1"}}
-# interrupt_info = ""
-# # Run the graph until the first interruption
-# for event in graph.stream(initial_input, thread, stream_mode="updates"):
-#     print(event)
-#     print("\n")
-#     if '__interrupt__' in event:
-#         interrupt_obj = event['__interrupt__'][0]
-#         interrupt_value = interrupt_obj.value
-#         plan_to_edit = interrupt_value["agent's plan that the user can edit"]
-        
-#         formatted_plan = "\n".join([
-#             f"Step {i+1}: {step.description} (using {step.subagent})"
-#             for i, step in enumerate(plan_to_edit)
-#         ])
-        
-#         print("\nCurrent plan:")
-#         print(formatted_plan)
-#         print("\nIs there anything you would like to change about the plan? If so, please enter your proposed changes. If not, just press enter.")
-#         user_response = input() 
-#         if user_response != "":
-#             interrupt_info = user_response
-# new_result = graph.invoke(Command(resume=interrupt_info), config=thread)
-# print(new_result['response'], "new result")
