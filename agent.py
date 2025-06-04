@@ -3,8 +3,6 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv(dotenv_path=".env", override=True)
 
-# Alternatively, you can use AzureChatOpenAI()
-# model = AzureChatOpenAI()
 model = ChatOpenAI(model="o3-mini")
 
 from typing_extensions import TypedDict
