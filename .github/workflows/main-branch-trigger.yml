@@ -141,7 +141,7 @@ jobs:
         echo "🚀 Triggering deployment to LangChain hosted platform..."
         
         response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-          https://gtm.smith.langchain.dev/v1/projects \
+          https://gtm.smith.langchain.dev/api-host/v1/projects \
           --request POST \
           --header 'Content-Type: application/json' \
           --header 'X-Api-Key: ${{ secrets.LANGSMITH_API_KEY }}' \
