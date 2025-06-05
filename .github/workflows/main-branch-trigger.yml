@@ -148,7 +148,6 @@ jobs:
           --data '{
             "name": "multi-agent-plan-execute-${{ github.sha }}",
             "lc_hosted": true,
-            "repo_commit": "${{ github.sha }}",
             "env_vars": [{"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}", "type": "secret"}],
             "deployment_type": "dev",
             "shareable": false,
