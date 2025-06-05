@@ -141,13 +141,13 @@ jobs:
         echo "🚀 Triggering deployment to LangChain hosted platform..."
         
         response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-          https://gtm.smith.langchain.dev/v1/projects \
+          https://api.host.langchain.com/v1/projects \
           --request POST \
           --header 'Content-Type: application/json' \
           --header 'X-Api-Key: ${{ secrets.LANGSMITH_API_KEY }}' \
           --data '{
             "name": "multi-agent-${{ github.sha }}",
-            "lc_hosted": true,
+            "lc_hosted": false,
             "env_vars": [{"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}", "type": "secret"}],
             "deployment_type": "dev",
             "shareable": false,
