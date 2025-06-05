@@ -146,7 +146,7 @@ jobs:
           --header 'Content-Type: application/json' \
           --header 'X-Api-Key: ${{ secrets.LANGSMITH_API_KEY }}' \
           --data '{
-            "name": "multi-agent-plan-execute-${{ github.sha }}",
+            "name": "multi-agent-${{ github.sha }}",
             "lc_hosted": true,
             "env_vars": [{"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}", "type": "secret"}],
             "deployment_type": "dev",
