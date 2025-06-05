@@ -152,7 +152,7 @@ jobs:
             "deployment_type": "dev",
             "shareable": false,
             "image_path": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest",
-            "build_on_push":  false,
+            "build_on_push": false
           }')
         
         # Extract HTTP status and response body
