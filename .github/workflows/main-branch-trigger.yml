@@ -148,17 +148,12 @@ jobs:
           --data '{
             "name": "multi-agent-plan-execute-${{ github.sha }}",
             "lc_hosted": true,
-            "repo_url": "null",
-            "repo_path": "null", 
             "repo_commit": "${{ github.sha }}",
-            "env_vars": "{\"OPENAI_API_KEY\": \"${{ secrets.OPENAI_API_KEY }}\"}",
-            "host_integration_id": null,
+            "env_vars": [{"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}", "type": "secret"}],
             "deployment_type": "dev",
-            "shareable": "null",
-            "platform": "null",
+            "shareable": false,
             "image_path": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest",
-            "build_on_push": false,
-            "container_spec": "null"
+            "build_on_push":  false,
           }')
         
         # Extract HTTP status and response body
