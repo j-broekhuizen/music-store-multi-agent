@@ -1,0 +1,38 @@
+# Git and version control
+.git
+.github
+
+# Documentation and images
+README.md
+images/
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Jupyter notebooks
+*.ipynb
+
+# Environment files
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log 
