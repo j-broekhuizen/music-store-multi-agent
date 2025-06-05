@@ -135,9 +135,42 @@ jobs:
         echo "✅ Deployment completed successfully!"
         echo "🚀 New image available at: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
     
-    # Optional: Trigger deployment to staging/production
-    # - name: Trigger deployment
-    #   run: |
-    #     curl -X POST "${{ secrets.DEPLOYMENT_WEBHOOK_URL }}" \
-    #       -H "Content-Type: application/json" \
-    #       -d '{"image": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest", "sha": "${{ github.sha }}"}'
+    # Deploy to LangChain hosted platform
+    - name: Trigger LangChain deployment
+      run: |
+        echo "🚀 Triggering deployment to LangChain hosted platform..."
+        
+        response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+          https://api.host.langchain.com/v1/projects \
+          --request POST \
+          --header 'Content-Type: application/json' \
+          --header 'Authorization: Bearer ${{ secrets.LANGCHAIN_API_KEY }}' \
+          --data '{
+            "name": "multi-agent-plan-execute-${{ github.sha }}",
+            "lc_hosted": true,
+            "repo_url": "null",
+            "repo_path": "null", 
+            "repo_commit": "${{ github.sha }}",
+            "env_vars": "{\"OPENAI_API_KEY\": \"${{ secrets.OPENAI_API_KEY }}\"}",
+            "host_integration_id": null,
+            "deployment_type": "dev",
+            "shareable": "null",
+            "platform": "null",
+            "image_path": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest",
+            "build_on_push": false,
+            "container_spec": "null"
+          }')
+        
+        # Extract HTTP status and response body
+        http_status=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+        response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+        
+        # Check if deployment was successful
+        if [ $http_status -eq 200 ] || [ $http_status -eq 201 ]; then
+          echo "✅ LangChain deployment triggered successfully!"
+          echo "📋 Response: $response_body"
+        else
+          echo "❌ LangChain deployment failed with status: $http_status"
+          echo "📋 Response: $response_body"
+          exit 1
+        fi
