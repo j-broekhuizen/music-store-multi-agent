@@ -144,7 +144,7 @@ jobs:
           https://api.host.langchain.com/v1/projects \
           --request POST \
           --header 'Content-Type: application/json' \
-          --header 'Authorization: Bearer ${{ secrets.LANGCHAIN_API_KEY }}' \
+          --header 'X-Api-Key: ${{ secrets.LANGSMITH_API_KEY }}' \
           --data '{
             "name": "multi-agent-plan-execute-${{ github.sha }}",
             "lc_hosted": true,
