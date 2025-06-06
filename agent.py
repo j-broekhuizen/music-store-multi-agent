@@ -240,59 +240,59 @@ def human_input(state: State, config: RunnableConfig, store: BaseStore) -> dict:
             "messages": [SystemMessage(content=update_msg)]
         }
 
-# from langgraph.pregel.remote import RemoteGraph
+from langgraph.pregel.remote import RemoteGraph
 
-# customer_information_deployment_url = "https://remote-customer-assistant-cbd474a176cb59fe87deddf6f14ce85c.us.langgraph.app"
-# music_catalog_information_deployment_url = "https://remote-music-assistant-56295a1f54e5561f812da52437d18097.us.langgraph.app"
-# invoice_information_deployment_url = "https://remote-invoice-assistant-986c987c38e9536ea5aa870c6082254e.us.langgraph.app"
+customer_information_deployment_url = "https://remote-customer-assistant-cbd474a176cb59fe87deddf6f14ce85c.us.langgraph.app"
+music_catalog_information_deployment_url = "https://remote-music-assistant-56295a1f54e5561f812da52437d18097.us.langgraph.app"
+invoice_information_deployment_url = "https://remote-invoice-assistant-986c987c38e9536ea5aa870c6082254e.us.langgraph.app"
 
-# customer_information_remote_graph = RemoteGraph("agent", url=customer_information_deployment_url)
-# music_catalog_information_remote_graph = RemoteGraph("agent", url=music_catalog_information_deployment_url)
-# invoice_information_remote_graph = RemoteGraph("agent", url=invoice_information_deployment_url)
+customer_information_remote_graph = RemoteGraph("agent", url=customer_information_deployment_url)
+music_catalog_information_remote_graph = RemoteGraph("agent", url=music_catalog_information_deployment_url)
+invoice_information_remote_graph = RemoteGraph("agent", url=invoice_information_deployment_url)
 
-# def agent_executor(state: State, config: RunnableConfig, store: BaseStore) -> dict:
-#     print("\n" + "="*50 + "🤖 AGENT EXECUTOR FUNCTION CALLED" + "="*50)
-#     plan = state["action_plan"]
+def agent_executor(state: State, config: RunnableConfig, store: BaseStore) -> dict:
+    print("\n" + "="*50 + "🤖 AGENT EXECUTOR FUNCTION CALLED" + "="*50)
+    plan = state["action_plan"]
 
-#     if plan: 
-#         total_plan = "\n".join([
-#             f"{i+1}. {step.subagent} will: {step.description}" 
-#             for i, step in enumerate(plan)
-#         ])
-#         first_task_subagent = plan[0].subagent
-#         first_task_description = plan[0].description
-#         first_task_subagent_response = first_task_subagent + " executed logic to answer the following request from the planner/supervisor: " + first_task_description + ".\n Please output your report on your work progress to your supervisor as a update on your action and progress, rather than a end-user facing message. "
-#         task_formatted_prompt = f"""For the following plan: 
-#         {total_plan}
-#         You are tasked with executing the first step #1. {first_task_subagent} will: {first_task_description}
-#         """
-#         # Calls the appropriate sub-agent with context
-#         if first_task_subagent == "customer_information_subagent":
-#             response = customer_information_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
-#             final_response = response[-1]['content']
-#         elif first_task_subagent == "music_catalog_information_subagent":
-#             response = music_catalog_information_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
-#             final_response = response[-1]['content']
-#         elif first_task_subagent == "invoice_information_subagent":
-#             response = invoice_information_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
-#             final_response = response[-1]['content']
+    if plan: 
+        total_plan = "\n".join([
+            f"{i+1}. {step.subagent} will: {step.description}" 
+            for i, step in enumerate(plan)
+        ])
+        first_task_subagent = plan[0].subagent
+        first_task_description = plan[0].description
+        first_task_subagent_response = first_task_subagent + " executed logic to answer the following request from the planner/supervisor: " + first_task_description + ".\n Please output your report on your work progress to your supervisor as a update on your action and progress, rather than a end-user facing message. "
+        task_formatted_prompt = f"""For the following plan: 
+        {total_plan}
+        You are tasked with executing the first step #1. {first_task_subagent} will: {first_task_description}
+        """
+        # Calls the appropriate sub-agent with context
+        if first_task_subagent == "customer_information_subagent":
+            response = customer_information_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
+            final_response = response[-1]['content']
+        elif first_task_subagent == "music_catalog_information_subagent":
+            response = music_catalog_information_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
+            final_response = response[-1]['content']
+        elif first_task_subagent == "invoice_information_subagent":
+            response = invoice_information_remote_graph.invoke({"messages": [HumanMessage(content=task_formatted_prompt)]})["messages"]
+            final_response = response[-1]['content']
 
-#         system_msg = "Executed " + first_task_subagent + ":\n" + final_response
-#         print("System Message: " + system_msg)
+        system_msg = "Executed " + first_task_subagent + ":\n" + final_response
+        print("System Message: " + system_msg)
             
-#         return {
-#             # Update State 
-#             "past_steps": [
-#                 (first_task_subagent_response, final_response)
-#             ],
-#             "messages": [SystemMessage(content=system_msg)]
-#     } 
-#     else: 
-#         system_msg = "No agent executed based on current plan. Proceeding to replanner step."
-#         print("System Message: " + system_msg)
-#         return {
-#             "messages": [SystemMessage(content=system_msg)]
-#     } 
+        return {
+            # Update State 
+            "past_steps": [
+                (first_task_subagent_response, final_response)
+            ],
+            "messages": [SystemMessage(content=system_msg)]
+    } 
+    else: 
+        system_msg = "No agent executed based on current plan. Proceeding to replanner step."
+        print("System Message: " + system_msg)
+        return {
+            "messages": [SystemMessage(content=system_msg)]
+    } 
     
 class Response(BaseModel):
     """Response to user."""
@@ -463,18 +463,18 @@ builder = StateGraph(State)
 builder.add_node("supervisor", supervisor)
 builder.add_edge(START, "supervisor")
 builder.add_edge("supervisor", END)
-# builder.add_node("agent_executor", agent_executor)
-# builder.add_node("replanner", replanner)
-# builder.add_node("human_input", human_input)
-# builder.add_edge(START, "supervisor")
-# builder.add_edge("supervisor", "human_input")
-# builder.add_edge("human_input", "agent_executor")
-# builder.add_edge("agent_executor", "replanner")
-# builder.add_conditional_edges(
-#     "replanner",
-#     should_end,
-#     ["agent_executor", END],
-# )
+builder.add_node("agent_executor", agent_executor)
+builder.add_node("replanner", replanner)
+builder.add_node("human_input", human_input)
+builder.add_edge(START, "supervisor")
+builder.add_edge("supervisor", "human_input")
+builder.add_edge("human_input", "agent_executor")
+builder.add_edge("agent_executor", "replanner")
+builder.add_conditional_edges(
+    "replanner",
+    should_end,
+    ["agent_executor", END],
+)
 
 memory_saver = MemorySaver()
 graph = builder.compile(checkpointer=memory_saver, store=in_memory_store)
