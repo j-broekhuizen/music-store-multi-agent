@@ -1,4 +1,4 @@
-# Build a Multi-Agent System with LangGraph 🦜🕸️
+# Build a Multi-Agent System with LangGraph 
 
 ## Overview
 
