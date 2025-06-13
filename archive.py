@@ -11,22 +11,11 @@ model = ChatOpenAI(model="gpt-4o")
 
 # State definition
 from typing_extensions import TypedDict
-from typing import Annotated, List, Tuple, Literal, Union, Optional
+from typing import Annotated, List, Tuple, Literal, Union
 from langgraph.graph.message import AnyMessage, add_messages
 import operator
 
 
-# Input state - only accepts messages
-class InputState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
-
-
-# Output state - only returns messages
-class OutputState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
-
-
-# Full internal state - used for all graph operations
 class State(TypedDict):
     input: str
     action_plan: List[str]
@@ -170,41 +159,16 @@ def format_action_plan(steps_list):
     return summary
 
 
-# Helper function for memory updates
-def update_customer_memory(state: State, config: RunnableConfig, store: BaseStore):
-    """Update customer memory based on conversation"""
-    past_messages = state["messages"]
-    user_id = config.get("configurable", {}).get("user_id", "1")
-    if user_id == "":
-        user_id = "1"
-    namespace = ("memory_profile", user_id)
-    existing_memory = store.get(namespace, "user_memory")
-    if existing_memory and existing_memory.value:
-        existing_memory_dict = existing_memory.value
-        formatted_memory = f"Music Preferences: {', '.join(existing_memory_dict.get('music_preferences', []))}"
-    else:
-        formatted_memory = ""
-    formatted_system_message = SystemMessage(
-        content=create_memory_prompt.format(
-            conversation=past_messages, memory_profile=formatted_memory
-        )
-    )
-    structured_model = model.with_structured_output(UserProfile)
-    updated_memory = structured_model.invoke([formatted_system_message])
-    key = "user_memory"
-    store.put(namespace, key, {"memory": updated_memory})
-
-
-# Node 1: Supervisor - accepts InputState but writes to full State
-def supervisor(state: InputState, config: RunnableConfig, store: BaseStore) -> State:
+# Node
+def supervisor(state: State, config: RunnableConfig, store: BaseStore) -> dict:
     """Fetches relevant memory profiles and returns either a direct response or an action plan"""
 
     print("\n" + "=" * 50 + "🎯 SUPERVISOR FUNCTION CALLED" + "=" * 50)
 
     # Fetch existing user memory from long term memory store
-    user_id = config.get("configurable", {}).get("user_id", "1")
-    if user_id == "":
-        user_id = "1"
+    user_id = config["configurable"].get("user_id") or config["configurable"].get(
+        "thread_id"
+    )
     namespace = ("memory_profile", user_id)
     existing_memory = store.get(namespace, "user_memory")
     formatted_memory = ""
@@ -233,9 +197,7 @@ def supervisor(state: InputState, config: RunnableConfig, store: BaseStore) -> S
         return {
             "input": first_message.content,
             "response": result.action.response,
-            "messages": state["messages"] + [AIMessage(content=result.action.response)],
-            "action_plan": [],
-            "past_steps": [],
+            "messages": [SystemMessage(content=result.action.response)],
         }
     else:
         # Complex question - create action plan
@@ -249,14 +211,38 @@ def supervisor(state: InputState, config: RunnableConfig, store: BaseStore) -> S
         print("System Message: " + formatted_action_plan)
 
         return {
-            # Initialize full State structure
-            "input": first_message.content,
+            # Update State
             "action_plan": result.action.steps,
-            "messages": state["messages"]
-            + [SystemMessage(content=formatted_action_plan)],
-            "past_steps": [],
-            "response": "",
+            "input": first_message.content,
+            # Streaming intermediatery inputs
+            "messages": [SystemMessage(content=formatted_action_plan)],
         }
+
+
+# Helper function for memory updates
+def update_customer_memory(state: State, config: RunnableConfig, store: BaseStore):
+    """Update customer memory based on conversation"""
+    past_messages = state["messages"]
+
+    user_id = config["configurable"].get("user_id") or config["configurable"].get(
+        "thread_id"
+    )
+    namespace = ("memory_profile", user_id)
+    existing_memory = store.get(namespace, "user_memory")
+    if existing_memory and existing_memory.value:
+        existing_memory_dict = existing_memory.value
+        formatted_memory = f"Music Preferences: {', '.join(existing_memory_dict.get('music_preferences', []))}"
+    else:
+        formatted_memory = ""
+    formatted_system_message = SystemMessage(
+        content=create_memory_prompt.format(
+            conversation=past_messages, memory_profile=formatted_memory
+        )
+    )
+    structured_model = model.with_structured_output(UserProfile)
+    updated_memory = structured_model.invoke([formatted_system_message])
+    key = "user_memory"
+    store.put(namespace, key, {"memory": updated_memory})
 
 
 # Conditional edge function to route from supervisor
@@ -574,7 +560,7 @@ def replanner(state: State, config: RunnableConfig, store: BaseStore) -> dict:
         print("System Message: " + result.action.response)
         return {
             "response": result.action.response,
-            "messages": [AIMessage(content=result.action.response)],
+            "messages": [SystemMessage(content=result.action.response)],
         }
     else:
         formatted_update_plan = "Action plan has been updated. \n" + format_action_plan(
@@ -639,7 +625,7 @@ def should_end(state: State, config: RunnableConfig, store: BaseStore):
 # Compile Graph
 from langgraph.graph import END, StateGraph, START
 
-builder = StateGraph(State, input=InputState, output=OutputState)
+builder = StateGraph(State)
 builder.add_node("supervisor", supervisor)
 builder.add_node("agent_executor", agent_executor)
 builder.add_node("replanner", replanner)
@@ -663,3 +649,23 @@ builder.add_conditional_edges(
 
 graph = builder.compile(checkpointer=checkpointer, store=in_memory_store)
 # graph = builder.compile()
+
+
+# # Example usage:
+# # Simple question (goes directly from supervisor to END):
+# # - "Hello, how are you?"
+# # - "What services do you offer?"
+# # - "What genres of music do you have?"
+
+# # Complex question (goes supervisor -> human_input -> agent_executor -> replanner -> END):
+# # - "What is my customer information for ID 123?"
+# # - "What are my past purchases?"
+# # - "Show me all albums by U2 in your catalog"
+
+# if __name__ == "__main__":
+#     print("Multi-agent customer support system loaded successfully!")
+#     print("Graph includes conditional routing:")
+#     print("- Simple questions: supervisor -> END")
+#     print(
+#         "- Complex questions: supervisor -> human_input -> agent_executor -> replanner -> END"
+#     )

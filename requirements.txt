@@ -8,3 +8,5 @@ langchain-community
 scikit-learn 
 openai 
 ipython
+langgraph-cli
+langgraph-cli[inmem]
