@@ -3,3 +3,4 @@
 agent_old.py
 agent_old_old.py
 *.pyc
+*.ipynb

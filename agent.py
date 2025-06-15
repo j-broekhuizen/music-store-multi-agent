@@ -155,9 +155,15 @@ def format_action_plan(steps_list):
     summary = "# ACTION PLAN: \n\n"
 
     for i, step in enumerate(steps_list, 1):
-        # Extract information from Step object
-        task_description = step.description
-        subagent = step.subagent
+        # Extract information from Step object or dictionary
+        if isinstance(step, dict):
+            # Handle dictionary format (after serialization)
+            task_description = step.get("description", "")
+            subagent = step.get("subagent", "")
+        else:
+            # Handle Step object format
+            task_description = step.description
+            subagent = step.subagent
 
         # Format the action summary
         summary += f"## Action {i}\n\n"
@@ -413,12 +419,19 @@ def agent_executor(state: State, config: RunnableConfig, store: BaseStore) -> di
     if plan:
         total_plan = "\n".join(
             [
-                f"{i+1}. {step.subagent} will: {step.description}"
+                f"{i+1}. {step.get('subagent', '') if isinstance(step, dict) else step.subagent} will: {step.get('description', '') if isinstance(step, dict) else step.description}"
                 for i, step in enumerate(plan)
             ]
         )
-        first_task_subagent = plan[0].subagent
-        first_task_description = plan[0].description
+        # Handle first step - check if it's a dict or Step object
+        first_step = plan[0]
+        if isinstance(first_step, dict):
+            first_task_subagent = first_step.get("subagent", "")
+            first_task_description = first_step.get("description", "")
+        else:
+            first_task_subagent = first_step.subagent
+            first_task_description = first_step.description
+
         first_task_subagent_response = (
             first_task_subagent
             + " executed logic to answer the following request from the planner/supervisor: "
