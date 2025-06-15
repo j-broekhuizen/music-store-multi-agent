@@ -116,7 +116,12 @@ For COMPLEX questions that require NEW information from the database (customer d
 CRITICAL: If anything the customer asks about is available in their existing memory profile below, answer directly using DirectResponse. Do NOT create an action plan for information you already have.
 
 You have existing information/long term memory about the customer that you can use to answer their questions directly:
+
+### START EXISTING CUSTOMER INFORMATION ###
+
 {existing_customer_information}
+
+### END EXISTING CUSTOMER INFORMATION ###
 
 If the existing customer information contains the answer to their question, provide a DirectResponse immediately. Only create an action plan if you need NEW information that is not available in the existing customer memory.
 
@@ -179,11 +184,13 @@ def format_action_plan(steps_list):
 # Helper function for memory updates
 def update_customer_memory(state: State, config: RunnableConfig, store: BaseStore):
     """Update customer memory based on conversation"""
+    print("\n" + "=" * 50 + "🧠 MEMORY UPDATE FUNCTION CALLED" + "=" * 50)
     past_messages = state["messages"]
     user_id = config.get("configurable", {}).get("user_id", "1")
     if user_id == "":
         user_id = "1"
     namespace = ("memory_profile", user_id)
+    print(f"\n\nDEBUG: Using namespace {namespace} with config {config}\n\n")
     existing_memory = store.get(namespace, "user_memory")
     if existing_memory and existing_memory.value:
         existing_memory_dict = existing_memory.value
@@ -206,6 +213,7 @@ def supervisor(state: InputState, config: RunnableConfig, store: BaseStore) -> S
     """Fetches relevant memory profiles and returns either a direct response or an action plan"""
 
     print("\n" + "=" * 50 + "🎯 SUPERVISOR FUNCTION CALLED" + "=" * 50)
+    print("\n\nDEBUG CONFIG:" + str(config) + "\n\n")
 
     # Fetch existing user memory from long term memory store
     user_id = config.get("configurable", {}).get("user_id", "1")
@@ -219,6 +227,8 @@ def supervisor(state: InputState, config: RunnableConfig, store: BaseStore) -> S
 
     # Fetch user input
     first_message = state["messages"][-1]
+
+    print("\n\nFormatted Memory: " + formatted_memory + "\n\n")
 
     # Enforce structured output from LLM
     structured_model = model.with_structured_output(SupervisorResponse)
